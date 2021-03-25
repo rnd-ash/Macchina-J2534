@@ -1,0 +1,16 @@
+{
+	"CAN": true,
+	"ISO15765": true,
+	"ISO9141": false,
+	"ISO14230": false,
+	"SCI_A_TRANS": false,
+	"SCI_A_ENGINE": false,
+	"SCI_B_TRANS": false,
+	"SCI_B_ENGINE" : false,
+	"J1850VPW" : false,
+	"J1850PWM" : false,
+	"FUNCTION_LIB": "~/.passthru/macchina_driver_a0.so",
+	"NAME": "Macchina A0",
+	"VENDOR": "rnd-ash@github.com",
+	"COM-PORT": "/dev/ttyACM0"
+}

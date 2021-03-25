@@ -1,0 +1,16 @@
+{
+	"CAN": true,
+	"ISO15765": true,
+	"ISO9141": true,
+	"ISO14230": true,
+	"SCI_A_TRANS": false,
+	"SCI_A_ENGINE": false,
+	"SCI_B_TRANS": false,
+	"SCI_B_ENGINE" : false,
+	"J1850VPW" : false,
+	"J1850PWM" : false,
+	"FUNCTION_LIB": "~/.passthru/macchina_driver_m2.so",
+	"NAME": "Macchina M2 Under the dash",
+	"VENDOR": "rnd-ash@github.com",
+	"COM-PORT": "/dev/ttyACM0"
+}
