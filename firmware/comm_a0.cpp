@@ -100,7 +100,7 @@ namespace PCCOMM {
 
     void init() {
         uart_config_t cfg;
-        cfg.baud_rate = 1000000;
+        cfg.baud_rate = 2000000;
         cfg.data_bits = UART_DATA_8_BITS;
         cfg.parity = UART_PARITY_DISABLE;
         cfg.stop_bits = UART_STOP_BITS_1;
@@ -117,7 +117,14 @@ namespace PCCOMM {
 
     void send_message(COMM_MSG *msg) {
         PT_DEVICE->set_tx_led(true);
-        uart_write_bytes(UART_NUM_0, (const char*)msg, COMM_MSG_SIZE);
+        char* tmp = new char[msg->arg_size + 4];
+        tmp[0] = (msg->arg_size + 2);
+        tmp[1] = (msg->arg_size + 2) >> 8;
+        tmp[2] = msg->msg_id;
+        tmp[3] = msg->msg_type;
+        memcpy(&tmp[4], &msg->args[0], msg->arg_size);
+        uart_write_bytes(UART_NUM_0, (const char*)tmp, msg->arg_size+4); // buffer
+        delete[] tmp;
         PT_DEVICE->set_tx_led(false);
     }
 

@@ -12,5 +12,5 @@
 	"FUNCTION_LIB": "~/.passthru/macchina_driver_a0.so",
 	"NAME": "Macchina A0",
 	"VENDOR": "rnd-ash@github.com",
-	"COM-PORT": "/dev/ttyACM0"
+	"COM-PORT": "/dev/ttyUSB0"
 }

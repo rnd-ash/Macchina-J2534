@@ -56,7 +56,7 @@ void pt_device::set_rx_led(bool state){
 
 void pt_device::set_tx_led(bool state){
     if (state) {
-        set_led_colour(0xFFFF00);
+        set_led_colour(0xFF0000);
     } else {
         set_led_colour(0x00FF00);
     }

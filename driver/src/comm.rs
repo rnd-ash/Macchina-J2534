@@ -53,7 +53,6 @@ const JSON_PATH : &str = "~/.passthru/macchina_m2.json";
 #[cfg(feature = "A0")]
 const JSON_PATH: &str = "~/.passthru/macchina_a0.json";
 
-
 #[cfg(feature = "M2")]
 const REG_PATH : &str = "SOFTWARE\\WOW6432Node\\PassThruSupport.04.04\\Macchina-Passthru-M2";
 #[cfg(feature = "A0")]
@@ -116,10 +115,14 @@ impl MacchinaM2 {
         let mut port = match serialport::new(port, 500000).open() {
             Ok(mut p) => {
                 p.set_flow_control(FlowControl::Hardware).expect("Fatal. Could not setup hardware flow control");
-                #[cfg(unix)]
-                p.set_timeout(std::time::Duration::from_millis(0)).expect("Fatal. Could not set Serial timeout");
-                #[cfg(windows)]
-                p.set_timeout(std::time::Duration::from_millis(1)).expect("Fatal. Could not set Serial timeout");
+
+                #[cfg(feature = "A0")]
+                {
+                    p.set_flow_control(FlowControl::None).expect("Fatal. Could not setup hardware flow control");
+                    // A0 uses real Serial, but it can handle 2M/s easily. Set to 1M/s
+                    p.set_baud_rate(2000000).expect("Fatal. Could not setup A0 baud rate");                
+                }
+                p.set_timeout(std::time::Duration::from_millis(10)).expect("Fatal. Could not set Serial timeout");
                 p.clear(ClearBuffer::All).expect("Fatal. Could not clear Serial buffers");
                 p
             },
@@ -189,6 +192,8 @@ impl MacchinaM2 {
         // thread does NOT block, or else data will be lost by the OS's
         // serial buffer.
         spawn(move || {
+
+            let mut is_reading = false;
             logger::log_debug_str("M2 serial reader thread starting!");
             let msg = CommMsg::new_with_args(MsgType::StatusMsg, &[0x01]);
             if port.write_all(&msg.to_slice()).is_err() {
@@ -198,46 +203,90 @@ impl MacchinaM2 {
             }
 
             let mut read_count = 0;
+            let mut read_target = 0;
             let mut read_buffer: [u8; COMM_MSG_SIZE * MAX_BUFFER_SIZE] = [0x00; COMM_MSG_SIZE * MAX_BUFFER_SIZE];
             let mut activity: bool;
             let mut _loop_count: u128 = 0;
             while is_running_t.load(Ordering::Relaxed) {
-                activity = false;
-                //loop_count+=1;
-                let incoming = port.read(&mut read_buffer[read_count..]).unwrap_or(0);
-                read_count += incoming;
-                //if read_count > 0 {
-                //    log_debug(format!("READ {} {} in buffer - Looped {} times", incoming, read_count, loop_count));
-                //    loop_count = 0;
-                //}
-                while read_count >= COMM_MSG_SIZE {
-                    activity = true;
-                    let msg = CommMsg::from_vec(&read_buffer[0..COMM_MSG_SIZE]);
-                    unsafe {
-                        std::ptr::copy(&read_buffer[COMM_MSG_SIZE], &mut read_buffer[0], COMM_MSG_SIZE*(MAX_BUFFER_SIZE-1));
-                    }
-                    read_count -= COMM_MSG_SIZE;
-                    match msg.msg_type {
-                        MsgType::LogMsg => log_m2_msg(String::from_utf8(msg.args).unwrap()),
-                        MsgType::ReceiveChannelData => {
-                            if chan_tx.send(msg).is_err() {
-                                log_error_str("Could not write data to channel thread receiver!");
-                            }
-                        },
-                        _ => {
-                            if msg.msg_id != 0 && msg.msg_id < 100 {
-                                if let Err(e) = senders[(msg.msg_id-1) as usize].send(msg) {
-                                    // Shouldn't happen, log it if it does
-                                    log_error(format!("Could not push COMM_MSG to receive queue: {}", e))
+                #[cfg(feature = "M2")]
+                {
+                    let incoming = port.read(&mut read_buffer[read_count..]).unwrap_or(0);
+                    read_count += incoming;
+                    activity = incoming > 0;
+                    //if incoming > 0 {
+                    //    log_debug(format!("READ {} bytes. {} in buffer", incoming, read_count));
+                    //}
+                    while read_count >= COMM_MSG_SIZE {
+                        let msg = CommMsg::from_vec(&read_buffer[0..COMM_MSG_SIZE]);
+                        unsafe {
+                            std::ptr::copy(&read_buffer[COMM_MSG_SIZE], &mut read_buffer[0], COMM_MSG_SIZE*(MAX_BUFFER_SIZE-1));
+                        }
+                        read_count -= COMM_MSG_SIZE;
+                        match msg.msg_type {
+                            MsgType::LogMsg => log_m2_msg(String::from_utf8(msg.args).unwrap()),
+                            MsgType::ReceiveChannelData => {
+                                if chan_tx.send(msg).is_err() {
+                                    log_error_str("Could not write data to channel thread receiver!");
                                 }
-                            } else {
-                                log_error(format!("Invalid message ID {} - Type: {:?}", msg.msg_id, msg.msg_type))
+                            },
+                            _ => {
+                                if msg.msg_id != 0 && msg.msg_id < 100 {
+                                    if let Err(e) = senders[(msg.msg_id-1) as usize].send(msg) {
+                                        // Shouldn't happen, log it if it does
+                                        log_error(format!("Could not push COMM_MSG to receive queue: {}", e))
+                                    }
+                                } else {
+                                    log_error(format!("Invalid message ID {} - Type: {:?}", msg.msg_id, msg.msg_type))
+                                }
                             }
                         }
                     }
+                    if !activity {
+                        std::thread::sleep(std::time::Duration::from_micros(10));
+                    }
                 }
-                if !activity {
-                    std::thread::sleep(std::time::Duration::from_micros(10));
+                #[cfg(feature = "A0")]
+                {
+                    let read = port.bytes_to_read().unwrap_or(0);
+                    if read >= 2 && !is_reading {
+                        let mut tmp: [u8; 2] = [0; 2];
+                        port.read_exact(&mut tmp);
+                        read_target = u16::from_le_bytes(tmp) as usize;
+                        read_count = 0;
+                        is_reading = true;
+                    } else if is_reading && read > 0 {
+                        let max_read = std::cmp::min(read_target - read_count, read as usize);
+                        port.read_exact(&mut read_buffer[read_count..read_count+max_read]);
+                        read_count += max_read;
+                        if read_count == read_target {
+                            is_reading = false;
+                            // Complete payload!
+                            let mut msg = CommMsg::new_with_args(MsgType::from_u8(&read_buffer[1]), &read_buffer[2..read_target as usize]);
+                            msg.msg_id = read_buffer[0];
+                            match msg.msg_type {
+                                MsgType::LogMsg => log_m2_msg(String::from_utf8(msg.args).unwrap()),
+                                MsgType::ReceiveChannelData => {
+                                    if chan_tx.send(msg).is_err() {
+                                        log_error_str("Could not write data to channel thread receiver!");
+                                    }
+                                },
+                                _ => {
+                                    if msg.msg_id != 0 && msg.msg_id < 100 {
+                                        if let Err(e) = senders[(msg.msg_id-1) as usize].send(msg) {
+                                            // Shouldn't happen, log it if it does
+                                            log_error(format!("Could not push COMM_MSG to receive queue: {}", e))
+                                        }
+                                    } else {
+                                        log_error(format!("Invalid message ID {} - Type: {:?}", msg.msg_id, msg.msg_type))
+                                    }
+                                }
+                            }
+
+
+                        }
+                    } else {
+                        std::thread::sleep(std::time::Duration::from_micros(10));
+                    }
                 }
             }
             let msg = CommMsg::new_with_args(MsgType::StatusMsg, &[0x00]);
