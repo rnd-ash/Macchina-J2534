@@ -23,7 +23,12 @@ void pt_device::init_device() {
 }
 
 int pt_device::read_batt_mv() {
-    return analogRead(GPIO_NUM_35) * 1000;
+    // vin = (vOut(r1+r2)/r2)
+    //
+    // r1 = 10k
+    // r2 = 2.2k
+    float vout = ((float)analogRead(GPIO_NUM_35) * 3.3) / 4095.0;
+    return (int)((vout * 1000.0) / (2200.0 / (10000.0 + 2200.0)));
 }
 
 void set_led_colour(uint32_t rgb) {
@@ -56,7 +61,7 @@ void pt_device::set_rx_led(bool state){
 
 void pt_device::set_tx_led(bool state){
     if (state) {
-        set_led_colour(0xFF0000);
+        set_led_colour(0xFFFF00);
     } else {
         set_led_colour(0x00FF00);
     }
