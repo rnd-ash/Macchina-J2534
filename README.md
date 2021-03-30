@@ -18,10 +18,10 @@ TODO - Feature is supported by the adapter, but work is needed on the driver sid
 
 |J2534 feature|[M2 UTD](https://www.macchina.cc/catalog/m2-boards/m2-under-dash)|[A0](https://www.macchina.cc/catalog/a0-boards/a0-under-dash)|
 |---|---|---|
-| Read battery voltage|:heavy_check_mark:|TODO|
+| Read battery voltage|:heavy_check_mark:|:heavy_check_mark:|
 | Read programming voltage|:x:|:x:|
-| ISO-TP|:heavy_check_mark:|TODO|
-| CAN |:heavy_minus_sign:| TODO |
+| ISO-TP|:heavy_check_mark:|:heavy_check_mark:|
+| CAN |:heavy_minus_sign:| :heavy_minus_sign: |
 | ISO9141| TODO | :x: |
 | ISO14230-4| TODO | :x: |
 |J1850PWM| TODO | :x: |
@@ -55,8 +55,25 @@ $ rustup run stable-i686-pc-windows-msvc
 3. In your `~/.passthru/` folder, you will find 2 JSON files. One for the M2 (`macchina_m2.json`) and one for the A0 (`macchina_a0.reg`). Change the `COM-PORT` attribute in the JSON to match that of your TTY port your adapter uses.
 
 ### Installing the adapter firmware
-1. Depending on your hardware, you will need to either open the foler `firmware/A0` for the Macchina A0, or `firmware/M2` for the M2 in the Arduino IDE.
-2. be sure you have read the setting up docs for your relivent adapter on Macchina's website [here for the A0](https://docs.macchina.cc/a0-docs/getting-started) or [here for the M2](https://docs.macchina.cc/m2-docs/arduino). 
-3. Press the upload sketch button!
+1. Install [FlexLED](https://github.com/FastLED/FastLED) and [esp32_can](https://github.com/collin80/esp32_can) libraries (instructions are on the repo links)
+2. be sure you have read the setting up docs for your relivent adapter on Macchina's website [here for the A0](https://docs.macchina.cc/a0-docs/getting-started) or [here for the M2](https://docs.macchina.cc/m2-docs/arduino).
+3. Open the firmware folder in Arduino IDE
+4. Modify `MACCHINA_CONFIG.h`, such that the file looks like the following depending on your target device:
+
+For A0
+```cpp
+//#define CFG_MACCHINA_M2
+#define CFG_MACCHINA_A0
+//#define CFG_MACCHINA_ESP32_TEST
+```
+
+For M2
+```cpp
+#define CFG_MACCHINA_M2
+//#define CFG_MACCHINA_A0
+//#define CFG_MACCHINA_ESP32_TEST
+```
+
+5. Upload the sketch to your target board and enjoy! On both the A0 and M2, a red LED will be activated upon successful upload. This means the adapter is ready to be used!
 
 
