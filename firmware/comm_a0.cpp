@@ -1,7 +1,7 @@
 #include "comm.h"
-#include <driver/uart.h>
 
 #if defined(CFG_MACCHINA_A0) || defined(CFG_MACCHINA_ESP32_TEST)
+#include <driver/uart.h>
 
 #define SERIAL_RX_SIZE COMM_MSG_SIZE
 

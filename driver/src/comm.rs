@@ -133,7 +133,7 @@ impl MacchinaM2 {
         {
             // Ok so windows is strange with A0....even with DTR off it seems to reset ESP32
             // So wait for 1 second for reset, then clear any extra data in the buffer
-            std::thread::sleep(std::time::Duration::from_millis(1000));
+            std::thread::sleep(std::time::Duration::from_millis(2000));
             port.clear(ClearBuffer::All).expect("Could not clear port!");
         }
         // For data going from Caller -> M2
