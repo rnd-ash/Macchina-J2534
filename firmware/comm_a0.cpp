@@ -12,58 +12,17 @@ bool send_change = false;
 COMM_MSG rx_tmp;
 bool receive_change = false;
 
-uint8_t tmp_queue[4096];
+uint8_t tmp_queue[COMM_MSG_SIZE];
 uint16_t read_pos = 0;
 uint16_t target_read = 0;
 bool is_reading = false;
-void loop_rx(void *pvParameters) {
-    size_t avaliable;
-    while(true) {
-        uart_get_buffered_data_len(UART_NUM_0, &avaliable);
-        if (avaliable > 2 && !is_reading) {
-            // Payload begin!
-            uint8_t buf[2];
-            if (uart_read_bytes(UART_NUM_0, buf, 2, 0) == 2) {
-                target_read = buf[1] << 8 | buf[0];
-                PT_DEVICE->set_rx_led(true);
-                is_reading = true;
-                read_pos = 0;
-            }
-        } else if (avaliable > 0 && is_reading) {
-            int max_to_read = std::min((size_t)(target_read - read_pos), avaliable);
-            int actual_read = uart_read_bytes(UART_NUM_0, &tmp_queue[read_pos], max_to_read, 0);
-            read_pos += actual_read;
-
-            if (read_pos == target_read) {
-                // Payload complete!
-                is_reading = false;
-                rx_tmp.arg_size = target_read - 2;
-                rx_tmp.msg_id = tmp_queue[0];
-                rx_tmp.msg_type = tmp_queue[1];
-                memcpy(&rx_tmp.args[0], &tmp_queue[2], target_read-2);
-                receive_change = true;
-                PT_DEVICE->set_rx_led(false);
-            }
-        }
-        vTaskDelay(1);
-    }
-}
 
 
 namespace PCCOMM {
-    int last_id = 0;
+    uint8_t last_id = 0;
+    COMM_MSG res = {0x00};
+
     bool read_message(COMM_MSG *msg) {
-        //if (receive_change) {
-        //    memcpy(msg, &rx_tmp, sizeof(COMM_MSG));
-        //    receive_change = false;
-        //    if (msg->msg_id != 0x00) {
-        //       last_id = msg->msg_id;
-        //    }
-        //    return true;
-        //} else {
-        //    return false;
-        //}
-    
         size_t avaliable;
         uart_get_buffered_data_len(UART_NUM_0, &avaliable);
         if (avaliable > 2 && !is_reading) {
@@ -79,8 +38,7 @@ namespace PCCOMM {
             int max_to_read = std::min((size_t)(target_read - read_pos), avaliable);
             int actual_read = uart_read_bytes(UART_NUM_0, &tmp_queue[read_pos], max_to_read, 0);
             read_pos += actual_read;
-
-            if (read_pos == target_read) {
+            if (read_pos >= target_read) {
                 // Payload complete!
                 is_reading = false;
                 msg->arg_size = target_read - 2;
@@ -105,14 +63,8 @@ namespace PCCOMM {
         cfg.parity = UART_PARITY_DISABLE;
         cfg.stop_bits = UART_STOP_BITS_1;
         cfg.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
-
         uart_param_config(UART_NUM_0, &cfg);
-        uart_driver_install(UART_NUM_0, 8192, 8192, 0, NULL, 0);
-
-
-        //if (xTaskCreate(loop_rx, "serial_rx_task", 8192, nullptr, configMAX_PRIORITIES-2, NULL) != pdPASS) {
-        //    PT_DEVICE->set_rgb_led(153, 50, 204);
-        //}
+        uart_driver_install(UART_NUM_0, COMM_MSG_SIZE*2, COMM_MSG_SIZE*2, 0, NULL, 0);
     }
 
     void send_message(COMM_MSG *msg) {
@@ -128,10 +80,7 @@ namespace PCCOMM {
         PT_DEVICE->set_tx_led(false);
     }
 
-    // This is used for log_message, respond_ok and respond_err
-    COMM_MSG res = {0x00};
-
-    void log_message(char* msg) {
+     void log_message(char* msg) {
         memset(&res, 0x00, sizeof(COMM_MSG));
         res.msg_type = MSG_LOG;
         res.arg_size = min((int)strlen(msg), COMM_MSG_ARG_SIZE);
@@ -170,6 +119,10 @@ namespace PCCOMM {
         memcpy(&res.args[1], &rx_status, 4);
         memcpy(&res.args[5], data, res.arg_size-5);
         send_message(&res);
+    }
+
+    uint8_t get_last_id() {
+        return last_id;
     }
 
     /**

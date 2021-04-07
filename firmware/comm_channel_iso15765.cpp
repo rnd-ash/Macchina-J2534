@@ -25,9 +25,6 @@ bool ISO15765Channel::setup(int id, int protocol, int baud, int flags) {
 
     PT_DEVICE->set_can_led(true);
     this->channel_id = id;
-
-    this->txPayload = {nullptr, 0, 0};
-    this->rxPayload = {nullptr, 0, 0};
     this->isSending = false;
     this->isReceiving = false;
     return true;
@@ -103,7 +100,6 @@ void ISO15765Channel::update() {
                     cmp = 1;
                 }
 
-
                 switch(f.data.bytes[cmp] & 0xF0) {
                 case 0x00:
                     rx_single_frame(&f);
@@ -126,20 +122,14 @@ void ISO15765Channel::update() {
             }
         }
     }
-    if (isSending && clear_to_send) {
-        if (millis() >= next_send_time) {
-            tx_multi_frame();
-            next_send_time = millis() + this->sep_time;
-            if (this->tx_frames_sent >= this->block_size_tx) {
-                this->clear_to_send = false; // Await flow control again
-            }
-        }
+    if (isSending && clear_to_send && millis() > next_send_time) {
+        tx_multi_frame();
     }
 }
 
 void ISO15765Channel::handle_fc(CAN_FRAME *read, int id) {
     // Here, we honour the ECU's COM Parameters, not ones provided by the diag SW.
-    // This is to purely ensure better compatibility!
+    // This is to purely ensure better compatibility
 
     // Firstly, see if we are clear to send (0x30)...If it is wait (0x31), send first
     // frame again back to the ECU
@@ -147,9 +137,15 @@ void ISO15765Channel::handle_fc(CAN_FRAME *read, int id) {
         PCCOMM::log_message("Flow Control is NOT 0x30!");
         return;
     }
-    this->block_size_tx = read->data.bytes[1];
+
+    if (read->data.bytes[1] == 0x00) {
+        this->block_size_tx = 0xFFFF; // Send all the frames!
+    } else {
+        this->block_size_tx = read->data.bytes[1];
+    }
     this->sep_time_tx = read->data.bytes[2];
     this->clear_to_send = true;
+    this->isSending = true;
     this->tx_frames_sent = 0;
     this->next_send_time = millis() + this->sep_time;
 }
@@ -164,15 +160,20 @@ void ISO15765Channel::tx_multi_frame() {
     debug_send_frame(f);
     tx_pci++;
     this->tx_frames_sent++;
-    this->next_send_time = millis() + this->sep_time_tx;
     // Rollover
     if (tx_pci == 0x30) {
-        tx_pci = 0x21;
+        tx_pci = 0x20;
     }
     if (txPayload.payloadPos >= txPayload.payloadSize) {
         this->clear_to_send = false;
         this->isSending = false;
-        delete[] this->txPayload.payload;
+        // Send our TxConfirm
+        PCCOMM::send_rx_data(this->channel_id, TX_MSG_TYPE, nullptr, 0);
+        return;
+    }
+    next_send_time = millis() + this->sep_time_tx;
+    if (this->tx_frames_sent >= this->block_size_tx) {
+        this->clear_to_send = false; // Await flow control again
     }
 }
 
@@ -216,8 +217,6 @@ void ISO15765Channel::rx_multi_frame(CAN_FRAME *read, int id) {
     if (rxPayload.payloadPos >= rxPayload.payloadSize) { // Got all our data!
         // Send the payload to the PC
         PCCOMM::send_rx_data(this->channel_id, 0x0000, rxPayload.payload, rxPayload.payloadSize);
-        // Now delete the old payload
-        delete[] this->rxPayload.payload;
         this->isReceiving = false;
         return;
     }
@@ -228,9 +227,11 @@ void ISO15765Channel::rx_multi_frame(CAN_FRAME *read, int id) {
         // Now create the flow control frame to send back to the application
         f.length = 8;
         f.data.bytes[0] = 0x30;
-        f.data.bytes[1] = 8; // BLOCK SIZE
-        f.data.bytes[2] = 0x02; // ST_MIN
-        debug_send_frame(f);
+        f.data.bytes[1] = this->block_size_tx; // BLOCK SIZE
+        f.data.bytes[2] = this->sep_time_tx; // ST_MIN
+        if (!debug_send_frame(f)) {
+            PCCOMM::log_message("CAN TX FAILED!");
+        }
         // ECU should now continue sending data...
     }
 }
@@ -255,7 +256,6 @@ void ISO15765Channel::send_ff_indication(CAN_FRAME *read, int id) {
     //char buf[40];
     //sprintf(buf, "Allocating %d bytes", size);
     //PCCOMM::log_message(buf);
-    this->rxPayload.payload = new char[size]; // +4 for CAN ID
     this->rxPayload.payloadSize = size;
     this->rxPayload.payloadPos = 10; // Always for first frame
     memcpy(&rxPayload.payload[4] ,&read->data.bytes[2], 6); // Copy the first 6 bytes (Start at 4 for CAN ID)
@@ -309,18 +309,22 @@ void ISO15765Channel::sendMsg(uint32_t tx_flags, char* data, int data_size, bool
                 PCCOMM::respond_ok(MSG_TX_CHAN_DATA, nullptr, 0);
             }
         }
-        if (respond) {
-            
-        }
     } else {
+        this->tx_id = PCCOMM::get_last_id();
+        this->respond_after_send = respond;
         if (this->isSending) {
             if (respond) {
                 PCCOMM::respond_err(MSG_TX_CHAN_DATA, ERR_BUFFER_FULL, nullptr);
             } else {
-                PCCOMM::log_message("Cannot send. IOS15765 is already busy");
+                char buf[80];
+                sprintf(buf, "Cannot send. ISO15765 is already sending (%d/%d bytes)", txPayload.payloadPos, txPayload.payloadSize);
+                PCCOMM::log_message(buf);
             }
             return;
         }
+        char buf[40];
+        sprintf(buf, "Sending %d bytes", data_size);
+        PCCOMM::log_message(buf);
         // TODO Multi frame data write
         f.extended = this->use29bitCid;
         f.priority = 4; // Balanced priority
@@ -330,21 +334,16 @@ void ISO15765Channel::sendMsg(uint32_t tx_flags, char* data, int data_size, bool
         f.data.bytes[0] = 0x10 | ((data_size - 4) & 0x0F00) >> 8;
         f.data.bytes[1] = (data_size - 4) & 0xFF; // First byte is the length of the ISO message
         memcpy(&f.data.bytes[2], &data[4], 6); // Copy data to bytes [1] and beyond
-        this->txPayload = isoPayload {
-            // Just copy the data, ignore the CID
-            new char[data_size],
-            data_size,
-            10 // pos 10 (6 + 4 for CID)
-        };
+        this->txPayload.payloadSize = data_size;
+        this->txPayload.payloadPos = 10;
         memcpy(&txPayload.payload[0], &data[0], data_size); // Copy the rest of the payload to our temp buffer
         
         // Set attributes for sending data
         this->clear_to_send = false;
         this->isSending = true;
         this->tx_pci = 0x21;
-        debug_send_frame(f);
-        if (respond) {
-            PCCOMM::respond_ok(MSG_TX_CHAN_DATA, nullptr, 0);
+        if (!debug_send_frame_force(f)) {
+            PCCOMM::log_message("CAN TX FAILED!");
         }
     }
 }

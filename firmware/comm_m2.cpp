@@ -7,6 +7,8 @@
 
 namespace PCCOMM {
     uint8_t last_id = 0;
+    COMM_MSG res = {0x00};
+    
     char* tempbuf;
     uint16_t read_count = 0;
     bool isReadingMsg = false;
@@ -52,10 +54,7 @@ namespace PCCOMM {
         PT_DEVICE->set_tx_led(false);
     }
 
-    // This is used for log_message, respond_ok and respond_err
-    COMM_MSG res = {0x00};
-
-    void log_message(char* msg) {
+     void log_message(char* msg) {
         memset(&res, 0x00, sizeof(COMM_MSG));
         res.msg_type = MSG_LOG;
         res.arg_size = min((int)strlen(msg), COMM_MSG_ARG_SIZE);
@@ -94,6 +93,32 @@ namespace PCCOMM {
         memcpy(&res.args[1], &rx_status, 4);
         memcpy(&res.args[5], data, res.arg_size-5);
         send_message(&res);
+    }
+
+    void respond_ok_custom_id(uint8_t op, uint8_t custom_id, uint8_t* args, uint16_t arg_size) {
+        memset(&res, 0x00, sizeof(COMM_MSG));
+        res.msg_type = op;
+        res.arg_size = 1 + min((int)arg_size, COMM_MSG_ARG_SIZE);
+        res.msg_id = custom_id;
+        res.args[0] = 0x00; // STATUS_NOERROR
+        if (arg_size != 0) {
+            memcpy(&res.args[1], args, res.arg_size-1);
+        }
+        send_message(&res);
+    }
+
+    void respond_err_custom_id(uint8_t op, uint8_t custom_id, uint8_t error_id, char* txt) {
+         memset(&res, 0x00, sizeof(COMM_MSG));
+        res.msg_type = op;
+        res.arg_size = 1 + min((int)strlen(txt), COMM_MSG_ARG_SIZE);
+        res.args[0] = error_id;
+        res.msg_id = custom_id;
+        memcpy(&res.args[1], txt, res.arg_size-1);
+        send_message(&res);
+    }
+
+    uint8_t get_last_id() {
+        return last_id;
     }
 
     /**

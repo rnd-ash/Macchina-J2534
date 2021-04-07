@@ -2,6 +2,7 @@
 #ifndef MACCHINA_CONFIG_H_
 #define MACCHINA_CONFIG_H_
 
+//#define FW_TEST
 
 
 //#define CFG_MACCHINA_M2

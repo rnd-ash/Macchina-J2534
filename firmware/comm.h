@@ -20,10 +20,10 @@
 #define MSG_IOCTL_GET 0x10
 #define MSG_STATUS 0xAA // Args: [0] -> 0x00 = Goodbye, 0x01 = Hellow
 #define MSG_GET_FW_VERSION 0xAB
-#define MSG_TEST 0x0FF
+#define MSG_TEST 0xFF
 
 // Reserve 4Kb of memory for a temp buffer for reading and writing comm messages. Basically, a larger serial buffer
-#define COMM_MSG_SIZE 4096
+#define COMM_MSG_SIZE 8192
 #define COMM_MSG_ARG_SIZE COMM_MSG_SIZE-4
 
 struct __attribute__ ((packed)) COMM_MSG {
@@ -34,15 +34,24 @@ struct __attribute__ ((packed)) COMM_MSG {
 };
 
 namespace PCCOMM {
+    
     void init();
+
     bool read_message(COMM_MSG *msg);
+
     void send_message(COMM_MSG *msg);
+
     void log_message(char* msg);
 
     void respond_ok(uint8_t op, uint8_t* args, uint16_t arg_size);
+
     void respond_err(uint8_t op, uint8_t error_id, char* txt);
+
     void send_rx_data(uint8_t channel_id, uint32_t rx_status, char* data, uint16_t data_len);
+
     void reset();
+
+    uint8_t get_last_id();
 }
 
 #endif

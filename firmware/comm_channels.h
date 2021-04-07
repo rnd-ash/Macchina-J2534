@@ -8,6 +8,7 @@
 
 bool debug_send_frame(CAN_FRAME &f);
 void debug_read_frame(CAN_FRAME &f);
+bool debug_send_frame_force(CAN_FRAME &f);
 
 class Channel {
     public:
@@ -51,7 +52,7 @@ class CanChannel : public Channel {
 };
 
 struct isoPayload {
-    char* payload;
+    char payload[5120]; // 4096 for payload, 4 for CANID
     int payloadSize;
     int payloadPos;
 };
@@ -82,14 +83,19 @@ class ISO15765Channel : public Channel {
         bool extAddressingPayload = false;
         bool isSending = false;
         bool isReceiving = false;
-        isoPayload rxPayload = {0x00}; // For receiving
-        isoPayload txPayload = {0x00}; // For sending
-        uint8_t block_size;
-        uint8_t sep_time;
-        uint8_t rx_frame_count;
-        uint8_t block_size_tx = 0;
-        uint8_t sep_time_tx = 0;
-        uint8_t tx_frames_sent = 0;
+
+
+        uint8_t tx_id = 0;
+        bool respond_after_send = false;
+
+        isoPayload rxPayload; // For receiving
+        isoPayload txPayload; // For sending
+        uint16_t block_size;
+        uint16_t sep_time;
+        uint16_t rx_frame_count;
+        uint16_t block_size_tx = 0;
+        uint16_t sep_time_tx = 0;
+        uint16_t tx_frames_sent = 0;
         uint8_t tx_pci = 0x20;
         unsigned long next_send_time;
         bool clear_to_send = false;

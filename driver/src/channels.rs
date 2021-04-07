@@ -387,7 +387,6 @@ impl Channel {
         if ptmsg.protocol_id != self.protocol as u32 {
             return Err(PassthruError::ERR_MSG_PROTOCOL_ID);
         }
-
         // Build Tx message
         let mut dst: Vec<u8> = Vec::new();
         for arg in [self.id, ptmsg.tx_flags].iter() {

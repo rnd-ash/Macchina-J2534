@@ -52,10 +52,34 @@ void pt_device::set_status_led(bool state) {
 }
 
 
-void pt_device::set_rx_led(bool state){}
-void pt_device::set_tx_led(bool state){}
-void pt_device::set_can_led(bool state){}
-void pt_device::set_kline_led(bool state){}
+void pt_device::set_rx_led(bool state){
+    if (state) {
+        digitalWrite(DS7_BLUE, LOW);
+    } else {
+        digitalWrite(DS7_BLUE, HIGH);
+    }
+}
+void pt_device::set_tx_led(bool state){
+    if (state) {
+        digitalWrite(DS7_GREEN, LOW);
+    } else {
+        digitalWrite(DS7_GREEN, HIGH);
+    }
+}
+void pt_device::set_can_led(bool state){
+    if (state) {
+        digitalWrite(DS3, LOW);
+    } else {
+        digitalWrite(DS3, HIGH);
+    }
+}
+void pt_device::set_kline_led(bool state){
+    if (state) {
+        digitalWrite(DS4, LOW);
+    } else {
+        digitalWrite(DS4, HIGH);
+    }
+}
 
 #endif
 

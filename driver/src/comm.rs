@@ -119,7 +119,7 @@ impl MacchinaM2 {
                 #[cfg(feature = "A0")]
                 {
                     p.set_flow_control(FlowControl::None).expect("Fatal. Could not setup hardware flow control");
-                    // A0 uses real Serial, but it can handle 2M/s easily. Set to 1M/s
+                    // A0 uses real Serial, but it can handle 2M/s easily.
                     p.set_baud_rate(2000000).expect("Fatal. Could not setup A0 baud rate");                
                 }
                 p.set_timeout(std::time::Duration::from_millis(10)).expect("Fatal. Could not set Serial timeout");
@@ -400,7 +400,7 @@ impl MacchinaM2 {
 }
 
 
-const COMM_MSG_SIZE: usize = 4096;
+const COMM_MSG_SIZE: usize = 8192;
 const COMM_MSG_ARG_SIZE: usize = COMM_MSG_SIZE - 4;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

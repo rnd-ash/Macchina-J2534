@@ -4,6 +4,7 @@
 mod tests {
     use crate::{PassThruConnect, PassThruOpen, passthru_drv};
     use crate::comm::*;
+    use crate::channels::ChannelComm;
     use j2534_rust::*;
     use passthru_drv::{passthru_close, passthru_connect, passthru_open, set_channel_filter};
 
@@ -35,5 +36,27 @@ mod tests {
         assert!(set_channel_filter(channel_idx, FilterType::PASS_FILTER, &mask, &ptn, std::ptr::null(), &mut filter_idx) == PassthruError::STATUS_NOERROR);
         std::thread::sleep(std::time::Duration::from_millis(1000));
         assert!(passthru_close(dev_idx) == PassthruError::STATUS_NOERROR);
+    }
+
+    //#[cfg(feature="A0")]
+    #[test]
+    pub fn test_large_tx_size() {
+        let mut dev_idx: u32 = 0;
+        assert!(passthru_open(&mut dev_idx) == PassthruError::STATUS_NOERROR);
+        
+        let mut channel_idx: u32 = 0;
+        assert!(passthru_connect(dev_idx, Protocol::ISO15765 as u32, 0, 500_000, &mut channel_idx) == PassthruError::STATUS_NOERROR);
+
+        let ptmsg = PASSTHRU_MSG {
+            protocol_id: Protocol::ISO15765 as u32,
+            rx_status: 0x00,
+            tx_flags: 0x40,
+            timestamp: 0,
+            data_size: 4096+4,
+            extra_data_size: 0,
+            data: [0; 4128]
+        };
+
+        ChannelComm::write_channel_data(channel_idx, &ptmsg, true);
     }
 }
