@@ -43,10 +43,18 @@ void CustomCan::__create_check_rx_ring(int i) {
 }
 
 bool CustomCan::enableCanBus(int baud) {
+#if defined(CFG_MACCHINA_A0) || defined(CFG_MACCHINA_ESP32_TEST)
+    pinMode(GPIO_NUM_21, OUTPUT);
+    digitalWrite(GPIO_NUM_21, LOW); // Fix for TJA1042 (Production Macchina A0). Set HSC_S pin low
+    if (Can0.begin(baud*2, 255) == 0) {
+        return false;
+    }
+#else
     // Begin bus
     if (Can0.init(baud) == 0) {
         return false;
     }
+#endif
     
     // Block all traffic
     for (int i = 0; i < 7; i++) {
@@ -86,7 +94,8 @@ bool CustomCan::__rx_queue_pop_frame(rxQueue &r, CAN_FRAME &f) {
 
 void CustomCan::enableCanFilter(int id, uint32_t pattern, uint32_t mask, bool isExtended) {
     if (id < 0 || id >= 7) return; // Invalid mailbox ID
-    
+
+    // Set pattern and mask on the specified mailbox
     Can0.setRXFilter(id, pattern, mask, isExtended);
     // Delete any old buffer if it for some reason exists
     __delete_check_rx_ring(id);
