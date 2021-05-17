@@ -5,6 +5,9 @@ This is a experimental driver which is built in Rust, and is unofficially ported
 
 The Linux and OSX port can be utilized by [OpenVehicleDiag](github.com/rnd-ash/OpenVehicleDiag)
 
+## Demo videos
+[Odysee](https://odysee.com/@rand_ash:58/openvehiclediag-macchina-j2534-release:4)
+[Youtube](https://youtu.be/_k-dWdNRVr0)
 
 ## Feature matrix
 
