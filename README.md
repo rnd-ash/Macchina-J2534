@@ -25,8 +25,8 @@ TODO - Feature is supported by the adapter, but work is needed on the driver sid
 | Read programming voltage|:x:|:x:|
 | ISO-TP|:heavy_check_mark:|:heavy_check_mark:|
 | CAN |:heavy_minus_sign:| :heavy_minus_sign: |
-| ISO9141| TODO | :x: |
-| ISO14230-4| TODO | :x: |
+| ISO9141| WIP | :x: |
+| ISO14230-4| WIP | :x: |
 |J1850PWM| TODO | :x: |
 |J1850VPW| TODO | :x: |
 |SCI|:x:|:x:|
@@ -44,6 +44,9 @@ You will need to install the i686-pc-windows-msvc toolchain!
 ```
 $ rustup run stable-i686-pc-windows-msvc
 ```
+
+### Linux users
+You need to install `libudev-dev` prior to building!
 
 ### Installing the driver on Windows
 1. Create the directory `C:\Program Files (x86)\macchina\passthru\`
