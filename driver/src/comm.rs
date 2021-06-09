@@ -48,14 +48,14 @@ unsafe impl Sync for MacchinaM2{}
 
 type Result<T> = std::io::Result<T>;
 
-#[cfg(feature = "M2")]
+#[cfg(all(feature = "M2", unix))]
 const JSON_PATH : &str = "~/.passthru/macchina_m2.json";
-#[cfg(feature = "A0")]
+#[cfg(all(feature = "A0", unix))]
 const JSON_PATH: &str = "~/.passthru/macchina_a0.json";
 
-#[cfg(feature = "M2")]
+#[cfg(all(feature = "M2", windows))]
 const REG_PATH : &str = "SOFTWARE\\WOW6432Node\\PassThruSupport.04.04\\Macchina-Passthru-M2";
-#[cfg(feature = "A0")]
+#[cfg(all(feature = "A0", windows))]
 const REG_PATH: &str = "SOFTWARE\\WOW6432Node\\PassThruSupport.04.04\\Macchina-Passthru-A0";
 
 #[cfg(unix)]
@@ -418,6 +418,7 @@ pub enum MsgType {
     ReadBatt = 0x08,
     IoctlSet = 0x09,
     IoctlGet = 0x10,
+    InitLinChannel = 0x11,
     StatusMsg = 0xAA,
     GetFwVersion = 0xAB,
     #[cfg(test)]
@@ -437,6 +438,7 @@ impl MsgType {
             0x08 => MsgType::ReadBatt,
             0x09 => MsgType::IoctlSet,
             0x10 => MsgType::IoctlGet,
+            0x11 => MsgType::InitLinChannel,
             0xAA => MsgType::StatusMsg,
             0xAB => MsgType::GetFwVersion,
             #[cfg(test)]

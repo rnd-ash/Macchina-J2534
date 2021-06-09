@@ -264,13 +264,13 @@ pub fn passthru_ioctl(
                 return PassthruError::ERR_NULL_PARAMETER 
             }
             if output_ptr.is_null() {
-                log_error_str("Cannot run five baud init. Input ptr is null");
+                log_error_str("Cannot run five baud init. Output ptr is null");
                 return PassthruError::ERR_NULL_PARAMETER 
             }
             ioctl::five_baud_init(
                 channel_id, 
                 unsafe { (input_ptr as *mut SBYTE_ARRAY).as_mut().unwrap() },
-                unsafe { (input_ptr as *mut SBYTE_ARRAY).as_mut().unwrap() }
+                unsafe { (output_ptr as *mut SBYTE_ARRAY).as_mut().unwrap() }
             )
         },
 
@@ -281,13 +281,13 @@ pub fn passthru_ioctl(
                 return PassthruError::ERR_NULL_PARAMETER 
             }
             if output_ptr.is_null() {
-                log_error_str("Cannot run fast init. Input ptr is null");
+                log_error_str("Cannot run fast init. Output ptr is null");
                 return PassthruError::ERR_NULL_PARAMETER 
             }
             ioctl::fast_init(
                 channel_id, 
                 unsafe { (input_ptr as *mut PASSTHRU_MSG).as_mut().unwrap() },
-                unsafe { (input_ptr as *mut PASSTHRU_MSG).as_mut().unwrap() }
+                unsafe { (output_ptr as *mut PASSTHRU_MSG).as_mut().unwrap() }
             )
         },
 
