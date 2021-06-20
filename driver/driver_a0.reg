@@ -1,0 +1,20 @@
+Windows Registry Editor Version 5.00
+
+; For the A0
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\PassThruSupport.04.04\Macchina-Passthru-A0]
+"SerialNumber"="00000000"
+"HardwareType"="M2-UTD"
+"Vendor"="rnd-ash@github.com"
+"Name"="Macchina A0 Passthru"
+"FunctionLibrary"="C:\\Program Files (x86)\\macchina\\passthru\\driver_a0.dll"
+"COM-PORT"="COM10"
+"CAN"=dword:00000001
+"ISO15765"=dword:00000001
+"ISO9141"=dword:00000000
+"ISO14230"=dword:00000000
+"J1850PWM"=dword:00000000
+"J1850VPW"=dword:00000000
+"SCI_A_ENGINE"=dword:00000000
+"SCI_B_ENGINE"=dword:00000000
+"SCI_A_TRANS"=dword:00000000
+"SCI_B_TRANS"=dword:00000000

@@ -48,12 +48,12 @@ $ rustup run stable-i686-pc-windows-msvc
 ### Linux users
 You need to install `libudev-dev` prior to building!
 
-### Installing the driver on Windows
+### Installing the driver on Windows (only x64)
 1. Create the directory `C:\Program Files (x86)\macchina\passthru\`
 2. Give the created `passthru` directory write permissions for your user account
 3. From the repositories driver folder, run `build.bat`. This will compile and install the drive
-4. Depending on your hardware, either open `driver_m2.reg` or `driver_a0.reg`, and modify the COM-PORT attribute in the reg file to match that of your adapter as listed in device manager
-5. Merge the `driver.reg` file with the Windows registry
+4. Depending on your hardware, either open `driver_m2.reg` or `driver_a0.reg`, and modify the COM-PORT attribute (e.g. COM10, COM8) in the reg file to match that of your adapter as listed in device manager
+5. Merge the `driver_m2.reg` or `driver_a0.reg` file with the Windows registry
 
 ### Installing the driver on Linux and OSX
 1. Create the directory `~/.passthru/`
