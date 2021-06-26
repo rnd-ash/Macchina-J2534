@@ -17,6 +17,7 @@ bool CanChannel::setup(int id, int protocol, int baud, int flags) {
     PT_DEVICE->set_can_led(true);
     this->channel_id = id;
     this->f.length = 0;
+    this->loopback = false; // Loopback is disabled by default!
     return true;
 }
 
@@ -33,7 +34,7 @@ void CanChannel::addFilter(int type, int filter_id, char* mask, char* pattern, c
         PCCOMM::respond_err(MSG_SET_CHAN_FILT, ERR_FAILED, "Pattern length too big");
         return;
     }
-     if (filter_id >= 7) { // Out of mailboxes!
+     if (filter_id >= MAILBOX_COUNT) { // Out of mailboxes!
         PCCOMM::respond_err(MSG_SET_CHAN_FILT, ERR_EXCEEDED_LIMIT, nullptr);
         return;
     }
@@ -70,7 +71,7 @@ void CanChannel::addFilter(int type, int filter_id, char* mask, char* pattern, c
 }
 
 void CanChannel::update() {
-    for (int i = 0; i < 7; i++) { // Check all our filters in use
+    for (int i = 0; i < MAILBOX_COUNT; i++) { // Check all our filters in use
         if (used_mailboxes[i] == true) { // We should this filter
             if (CustomCan::receiveFrame(i, &f)) {
                 bool send_frame = true;
@@ -124,6 +125,9 @@ void CanChannel::sendMsg(uint32_t tx_flags, char* data, int data_size, bool resp
     if (respond) {
         PCCOMM::respond_ok(MSG_TX_CHAN_DATA, nullptr, 0);
     }
+    if (this->loopback) {
+        PCCOMM::send_rx_data(this->channel_id, TX_MSG_TYPE, data, data_size);
+    }
 }
 
 
@@ -132,5 +136,14 @@ void CanChannel::ioctl_get(uint32_t id) {
 }
 
 void CanChannel::ioctl_set(uint32_t id, uint32_t value) {
-    PCCOMM::respond_err(MSG_IOCTL_SET, ERR_FAILED, "CAN IOCTL set unimplemented");
+    if (id == LOOPBACK) {
+        if (value == 0) {
+            this->loopback = false;
+        } else {
+            this->loopback = true;
+        }
+        PCCOMM::respond_ok(MSG_IOCTL_SET, nullptr, 0);
+    } else {
+        PCCOMM::respond_err(MSG_IOCTL_SET, ERR_FAILED, "CAN IOCTL set unimplemented");
+    }
 }

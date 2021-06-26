@@ -4,6 +4,7 @@
 #include "comm.h"
 #include "j2534_mini.h"
 #include "comm_channels.h"
+#include "MACCHINA_CONFIG.h"
 
 #define CAN_CHANNEL_ID 0
 #define KLINE_CHANNEL_ID 1
@@ -22,6 +23,12 @@ void ioctl_get(COMM_MSG *msg);
 void ioctl_set(COMM_MSG *msg);
 
 void create_can_channel(int id, int protocol, int baud, int flags);
+
+#if defined(CFG_MACCHINA_M2)
+void create_lin_channel(int id, int protocol, int baud, int flags);
+#endif
+
+void init_lin_channel(COMM_MSG *msg);
 
 /**
  * This function is ran when disconnect is called.

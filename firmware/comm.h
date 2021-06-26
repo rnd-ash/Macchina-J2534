@@ -18,6 +18,7 @@
 #define MSG_READ_BATT 0x08
 #define MSG_IOCTL_SET 0x09
 #define MSG_IOCTL_GET 0x10
+#define MSG_INIT_LIN_CHANNEL 0x11
 #define MSG_STATUS 0xAA // Args: [0] -> 0x00 = Goodbye, 0x01 = Hellow
 #define MSG_GET_FW_VERSION 0xAB
 #define MSG_TEST 0xFF

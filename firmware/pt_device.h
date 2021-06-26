@@ -27,7 +27,7 @@ private:
     const char* FIRMWARE_VERSION = "1.0.0_M2";
 #endif
 #if defined(CFG_MACCHINA_A0)
-    const char* FIRMWARE_VERSION = "1.0.0_A0";
+    const char* FIRMWARE_VERSION = "1.0.1_A0";
 #endif
 #if defined(CFG_MACCHINA_ESP32_TEST)
     const char* FIRMWARE_VERSION = "0.5.0_ESP32_DEV";

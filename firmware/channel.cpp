@@ -33,6 +33,15 @@ void setup_channel(COMM_MSG* msg) {
                 create_can_channel(id, protocol, baud, flags);
             }
             break;
+#if CFG_MACCHINA_M2
+        case KLINE_CHANNEL_ID:
+            if (klineChannel != nullptr) {
+                PCCOMM::respond_err(MSG_OPEN_CHANNEL, ERR_CHANNEL_IN_USE, nullptr);
+            } else {
+                create_lin_channel(id, protocol, baud, flags);
+            }
+            break;
+#endif
         default:
             PCCOMM::respond_err(MSG_OPEN_CHANNEL, ERR_FAILED, "Protocol unsupported");
             break;
@@ -54,6 +63,24 @@ void create_can_channel(int id, int protocol, int baud, int flags) {
     PCCOMM::respond_ok(MSG_OPEN_CHANNEL, nullptr, 0); // Tell driver CAN based channel is ready!
 }
 
+#if defined(CFG_MACCHINA_M2)
+void create_lin_channel(int id, int protocol, int baud, int flags) {
+    Channel *c = nullptr;
+    if (protocol == ISO9141) {
+        c = new Iso9141Channel();
+    } else {
+        PCCOMM::respond_err(MSG_OPEN_CHANNEL, ERR_NOT_SUPPORTED, nullptr);
+        return;
+    }
+    if (!c->setup(id, protocol, baud, flags)) { // This function will return log the error to driver if any error
+        delete c;
+        return;
+    }
+    klineChannel = c;
+    PCCOMM::respond_ok(MSG_OPEN_CHANNEL, nullptr, 0);
+}
+#endif
+
 void remove_channel(COMM_MSG *msg) {
     if (msg->msg_type != MSG_CLOSE_CHANNEL) {
         PCCOMM::respond_err(MSG_CLOSE_CHANNEL, ERR_FAILED, "This is NOT a close channel msg!");
@@ -68,6 +95,10 @@ void remove_channel(COMM_MSG *msg) {
     switch(id) {
         case CAN_CHANNEL_ID:
             delete_channel(canChannel);
+            PCCOMM::respond_ok(MSG_CLOSE_CHANNEL, nullptr, 0);
+            break;
+        case KLINE_CHANNEL_ID:
+            delete_channel(klineChannel);
             PCCOMM::respond_ok(MSG_CLOSE_CHANNEL, nullptr, 0);
             break;
         default:
@@ -114,8 +145,8 @@ void del_channel_filter(COMM_MSG* msg) {
         PCCOMM::respond_err(MSG_REM_CHAN_FILT, ERR_FAILED, "Message size not valid");
         return;
     }
-    unsigned int channel_id;
-    unsigned int filter_id;
+    unsigned int channel_id = little_endian_decode(&msg->args[0]);
+    unsigned int filter_id = little_endian_decode(&msg->args[4]);
 
     if (channel_id == CAN_CHANNEL_ID) {
         if (canChannel != nullptr) {
@@ -214,6 +245,16 @@ void send_data(COMM_MSG *msg) {
                 PCCOMM::log_message("Cannot send, Channel null!");
             }
         }
+    } else if (channel_id == KLINE_CHANNEL_ID) {
+        if (klineChannel != nullptr) {
+            klineChannel->sendMsg(tx_flags, buf, data_size, require_response);
+        } else {
+            if (require_response) {
+                PCCOMM::respond_err(MSG_TX_CHAN_DATA, ERR_INVALID_CHANNEL_ID, nullptr);
+            } else {
+                PCCOMM::log_message("Cannot send, Channel null!");
+            }
+        }
     } else {
         if (require_response) {
              PCCOMM::respond_err(MSG_TX_CHAN_DATA, ERR_FAILED, "Tx data not implemented for this protocol");
@@ -239,6 +280,13 @@ void ioctl_get(COMM_MSG *msg) {
     case CAN_CHANNEL_ID:
         if (canChannel != nullptr) {
             canChannel->ioctl_get(ioctl_id);
+        } else {
+            PCCOMM::respond_err(MSG_IOCTL_GET, ERR_FAILED, "Can channel is null!");
+        }
+        break;
+    case KLINE_CHANNEL_ID:
+        if (klineChannel != nullptr) {
+            klineChannel->ioctl_get(ioctl_id);
         } else {
             PCCOMM::respond_err(MSG_IOCTL_GET, ERR_FAILED, "Can channel is null!");
         }
@@ -270,9 +318,33 @@ void ioctl_set(COMM_MSG *msg) {
             PCCOMM::respond_err(MSG_IOCTL_SET, ERR_FAILED, "Can channel is null!");
         }
         break;
-    
+    case KLINE_CHANNEL_ID:
+        if (klineChannel != nullptr) {
+            klineChannel->ioctl_set(ioctl_id, value);
+        } else {
+            PCCOMM::respond_err(MSG_IOCTL_SET, ERR_FAILED, "Can channel is null!");
+        }
+        break;
     default:
         PCCOMM::respond_err(MSG_IOCTL_SET, ERR_INVALID_CHANNEL_ID, nullptr);
         break;
+    }
+}
+
+// Fast init or Five baud init
+void init_lin_channel(COMM_MSG *msg) {
+    unsigned long channel_id = little_endian_decode(&msg->args[0]); // 0-4
+    uint8_t init_method = msg->args[4]; // FIVE_BAUD = 0, FAST = 1
+    uint8_t* args = &msg->args[5];
+    uint8_t args_size = msg->arg_size - 5;
+
+    if (channel_id != KLINE_CHANNEL_ID) { // ID mismatch for K-Line
+        PCCOMM::respond_err(MSG_INIT_LIN_CHANNEL, ERR_INVALID_CHANNEL_ID, nullptr);
+    }
+    // Check if KLINE is null
+    if (klineChannel == nullptr) {
+        PCCOMM::respond_err(MSG_INIT_LIN_CHANNEL, ERR_INVALID_CHANNEL_ID, nullptr);
+    } else {
+        klineChannel->wakeup(init_method, args, args_size);
     }
 }

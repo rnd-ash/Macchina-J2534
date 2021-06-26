@@ -11,6 +11,13 @@
 #include <esp32_can.h>
 #endif
 
+#ifdef CFG_MACCHINA_M2
+#define MAILBOX_COUNT 7
+#endif
+#ifdef CFG_MACCHINA_A0
+#define MAILBOX_COUNT 10
+#endif
+
 namespace CustomCan {
 
     // Each mailbox has a rxMailbox of 8 frames
@@ -83,6 +90,15 @@ namespace CustomCan {
     void __callback_mb5(CAN_FRAME *f);
     // Callback function for mailbox 6
     void __callback_mb6(CAN_FRAME *f);
+#ifdef CFG_MACCHINA_A0
+     // Callback function for mailbox 7
+    void __callback_mb7(CAN_FRAME *f);
+     // Callback function for mailbox 8
+    void __callback_mb8(CAN_FRAME *f);
+     // Callback function for mailbox 9
+    void __callback_mb9(CAN_FRAME *f);
+#endif
+
 
     /**
      * Disables the Can0 interface

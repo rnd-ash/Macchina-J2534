@@ -47,7 +47,7 @@ void ISO15765Channel::addFilter(int type, int filter_id, char* mask, char* patte
         PCCOMM::respond_err(MSG_SET_CHAN_FILT, ERR_FAILED, "Flowcontrol length not 4");
         return;
     }
-    if (filter_id >= 7) {
+    if (filter_id >= MAILBOX_COUNT) {
         PCCOMM::respond_err(MSG_SET_CHAN_FILT, ERR_EXCEEDED_LIMIT, nullptr);
         return;
     }
@@ -90,7 +90,7 @@ void ISO15765Channel::destroy() {
 }
 
 void ISO15765Channel::update() {
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < MAILBOX_COUNT; i++) {
         if (used_mailboxes[i] == true) {
             if (CustomCan::receiveFrame(i, &f)) {
                 debug_read_frame(f);
@@ -99,7 +99,6 @@ void ISO15765Channel::update() {
                 if (this->extAddressingChannel) {
                     cmp = 1;
                 }
-
                 switch(f.data.bytes[cmp] & 0xF0) {
                 case 0x00:
                     rx_single_frame(&f);

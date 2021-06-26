@@ -77,6 +77,9 @@ void loop() {
     case MSG_IOCTL_GET:
       ioctl_get(&msg);
       break;
+    case MSG_INIT_LIN_CHANNEL:
+      init_lin_channel(&msg);
+      break;
     case MSG_GET_FW_VERSION:
       get_fw_version(&msg);
       break;

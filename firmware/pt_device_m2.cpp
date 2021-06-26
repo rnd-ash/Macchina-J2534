@@ -33,7 +33,7 @@ void pt_device::init_device() {
 
 int pt_device::read_batt_mv() {
     int voltage=M2IO.Supply_Volts() / 100;
-    if (voltage <= 65) { // Assume no voltage
+    if (voltage <= 62) { // Assume no voltage
         return 0;
     }
     return voltage * 100;

@@ -1,8 +1,7 @@
 #include "custom_can.h"
 #include "comm.h"
 
-// 7 RxQueues
-CustomCan::rxQueue rxQueues[7];
+CustomCan::rxQueue rxQueues[MAILBOX_COUNT];
 
 void CustomCan::__delete_check_rx_ring(int i) {
     rxQueues[i].head = 0;
@@ -37,6 +36,17 @@ void CustomCan::__create_check_rx_ring(int i) {
     case 6:
         Can0.setCallback(i, CustomCan::__callback_mb6);
         break;
+#ifdef CFG_MACCHINA_A0
+    case 7:
+        Can0.setCallback(i, CustomCan::__callback_mb7);
+        break;
+    case 8:
+        Can0.setCallback(i, CustomCan::__callback_mb8);
+        break;
+    case 9:
+        Can0.setCallback(i, CustomCan::__callback_mb9);
+        break;
+#endif
     default:
         break;
     }
@@ -57,7 +67,7 @@ bool CustomCan::enableCanBus(int baud) {
 #endif
     
     // Block all traffic
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < MAILBOX_COUNT; i++) {
         Can0.setRXFilter(i, 0xFFFF, 0x0000, false);
         // In case rxQueue is still there, delete it
         __delete_check_rx_ring(i);
@@ -93,7 +103,7 @@ bool CustomCan::__rx_queue_pop_frame(rxQueue &r, CAN_FRAME &f) {
 }
 
 void CustomCan::enableCanFilter(int id, uint32_t pattern, uint32_t mask, bool isExtended) {
-    if (id < 0 || id >= 7) return; // Invalid mailbox ID
+    if (id < 0 || id >= MAILBOX_COUNT) return; // Invalid mailbox ID
 
     // Set pattern and mask on the specified mailbox
     Can0.setRXFilter(id, pattern, mask, isExtended);
@@ -105,13 +115,13 @@ void CustomCan::enableCanFilter(int id, uint32_t pattern, uint32_t mask, bool is
 }
 
 void CustomCan::disableCanFilter(int id) {
-    if (id < 0 || id >= 7) return; // Invalid mailbox ID
+    if (id < 0 || id >= MAILBOX_COUNT) return; // Invalid mailbox ID
     Can0.setRXFilter(id, 0xFFFF, 0x0000, false);
     __delete_check_rx_ring(id);
 }
 
 bool CustomCan::receiveFrame(int mailbox_id, CAN_FRAME *f) {
-    if (mailbox_id < 0 || mailbox_id >= 7) return false; // Invalid malbox ID
+    if (mailbox_id < 0 || mailbox_id >= MAILBOX_COUNT) return false; // Invalid malbox ID
     return __rx_queue_pop_frame(rxQueues[mailbox_id], *f);
 }
 
@@ -120,7 +130,7 @@ bool CustomCan::sendFrame(CAN_FRAME *cf) {
 }
 
 void CustomCan::clearMailboxQueue(int mailbox_id) {
-    if (mailbox_id < 0 || mailbox_id >= 7) return; // Invalid malbox ID
+    if (mailbox_id < 0 || mailbox_id >= MAILBOX_COUNT) return; // Invalid malbox ID
     rxQueues[mailbox_id].head = 0;
     rxQueues[mailbox_id].tail = 0;
 }
@@ -132,3 +142,8 @@ void CustomCan::__callback_mb3(CAN_FRAME *f) { __rx_queue_push_frame(rxQueues[3]
 void CustomCan::__callback_mb4(CAN_FRAME *f) { __rx_queue_push_frame(rxQueues[4], *f); }
 void CustomCan::__callback_mb5(CAN_FRAME *f) { __rx_queue_push_frame(rxQueues[5], *f); }
 void CustomCan::__callback_mb6(CAN_FRAME *f) { __rx_queue_push_frame(rxQueues[6], *f); }
+#ifdef CFG_MACCHINA_A0
+void CustomCan::__callback_mb7(CAN_FRAME *f) { __rx_queue_push_frame(rxQueues[7], *f); }
+void CustomCan::__callback_mb8(CAN_FRAME *f) { __rx_queue_push_frame(rxQueues[8], *f); }
+void CustomCan::__callback_mb9(CAN_FRAME *f) { __rx_queue_push_frame(rxQueues[9], *f); }
+#endif
