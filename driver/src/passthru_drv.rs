@@ -40,7 +40,8 @@ fn copy_str_unsafe(dst: *mut c_char, src: &str) -> bool {
             false
         }
         Ok(x) => {
-            unsafe { std::ptr::copy_nonoverlapping(x.as_c_str().as_ptr(), dst, src.len()) };
+            let bytes = x.as_bytes_with_nul();
+            unsafe { std::ptr::copy_nonoverlapping(bytes.as_ptr(), dst as *mut u8, bytes.len()) };
             true
         }
     }
