@@ -23,13 +23,8 @@ void pt_device::init_device() {
 }
 
 int pt_device::read_batt_mv() {
-    // vin = (vOut(r1+r2)/r2)
-    //
-    // r1 = 10k
-    // r2 = 2.2k
-    float vout = ((float)analogRead(GPIO_NUM_35) * 3.3) / 4095.0;
-    vout = ((vout * 1000.0) / (2200.0 / (10000.0 + 2200.0)));
-    return vout + (vout*0.05); // A0 seems to underreport by ~5%
+    float vout = ((float)analogRead(GPIO_NUM_35) + 35) / 215.0;
+    return vout * 1100; // V to mV with +10% correction
 }
 
 void set_led_colour(uint32_t rgb) {
