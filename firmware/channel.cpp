@@ -33,7 +33,7 @@ void setup_channel(COMM_MSG* msg) {
                 create_can_channel(id, protocol, baud, flags);
             }
             break;
-#if CFG_MACCHINA_M2
+#ifdef CFG_MACCHINA_M2
         case KLINE_CHANNEL_ID:
             if (klineChannel != nullptr) {
                 PCCOMM::respond_err(MSG_OPEN_CHANNEL, ERR_CHANNEL_IN_USE, nullptr);
