@@ -52,13 +52,13 @@ You need to install `libudev-dev` prior to building!
 1. Create the directory `C:\Program Files (x86)\macchina\passthru\`
 2. Give the created `passthru` directory write permissions for your user account
 3. From the repositories driver folder, run `build.bat`. This will compile and install the drive
-4. Depending on your hardware, either open `driver_m2.reg` or `driver_a0.reg`, and modify the COM-PORT attribute in the reg file to match that of your adapter as listed in device manager
-5. Merge the `driver.reg` file with the Windows registry
+4. Open `WIN_DRIVER.reg` and modify the COM-PORT attributes in the reg file to match that of your adapter as listed in device manager
+5. Merge the `WIN_DRIVER.reg` file with the Windows registry
 
 ### Installing the driver on Linux and OSX
 1. Create the directory `~/.passthru/`
 2. From the repositories driver folder, run `build.sh`
-3. In your `~/.passthru/` folder, you will find 2 JSON files. One for the M2 (`macchina_m2.json`) and one for the A0 (`macchina_a0.reg`). Change the `COM-PORT` attribute in the JSON to match that of your TTY port your adapter uses.
+3. In your `~/.passthru/` folder, you will find 2 JSON files. One for the M2 (`macchina_m2.json`) and one for the A0 (`macchina_a0.json`). Change the `COM-PORT` attribute in the JSON to match that of your TTY port your adapter uses.
 
 ### Installing the adapter firmware
 1. Install [FlexLED](https://github.com/FastLED/FastLED) and [esp32_can](https://github.com/collin80/esp32_can) libraries (instructions are on the repo links)
