@@ -397,7 +397,7 @@ impl Channel {
         log_debug(format!("Channel {} writing message: {}. Response required?: {}", self.id, ptmsg, require_response));
         run_on_m2(|dev| {
             if require_response {
-                match dev.write_and_read_ptcmd(&mut msg, 100) {
+                match dev.write_and_read_ptcmd(&mut msg, 1000) {
                     M2Resp::Ok(_) => Ok(()),
                     M2Resp::Err{status, string}  => {
                         log_error(format!("M2 failed to write data to channel {} (Status {:?}): {}", self.id, status, string));
@@ -423,6 +423,7 @@ impl Channel {
         if self.rx_data.len() < MAX_QUEUE_MSGS {
             let mut msg = PASSTHRU_MSG {
                 data_size: data.len() as u32,
+                extra_data_size: 0,
                 rx_status,
                 protocol_id: self.protocol as u32,
                 timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as u32,

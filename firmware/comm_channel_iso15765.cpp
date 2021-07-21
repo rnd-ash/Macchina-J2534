@@ -167,7 +167,7 @@ void ISO15765Channel::tx_multi_frame() {
         this->clear_to_send = false;
         this->isSending = false;
         // Send our TxConfirm
-        PCCOMM::send_rx_data(this->channel_id, TX_MSG_TYPE, nullptr, 0);
+        PCCOMM::send_rx_data(this->channel_id, TX_MSG_TYPE, (char*)&txPayload, 4); // Only first 4 bytes are copied
         return;
     }
     next_send_time = millis() + this->sep_time_tx;
@@ -308,6 +308,7 @@ void ISO15765Channel::sendMsg(uint32_t tx_flags, char* data, int data_size, bool
                 PCCOMM::respond_ok(MSG_TX_CHAN_DATA, nullptr, 0);
             }
         }
+        PCCOMM::send_rx_data(this->channel_id, TX_MSG_TYPE, data, 4); // Only first 4 bytes are copied
     } else {
         this->tx_id = PCCOMM::get_last_id();
         this->respond_after_send = respond;
