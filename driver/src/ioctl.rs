@@ -144,6 +144,9 @@ pub fn fast_init(channel_id: u32, input: &mut PASSTHRU_MSG, output: &mut PASSTHR
     }) {
         Ok(res) => {
             // TODO set res into res_bytes
+            output.data_size = res.len() as u32;
+            output.data[0..res.len()].copy_from_slice(&res);
+            log_debug(format!("INIT OK! RES: {:02X?}", res));
             return PassthruError::STATUS_NOERROR
         }
         Err(err) => {

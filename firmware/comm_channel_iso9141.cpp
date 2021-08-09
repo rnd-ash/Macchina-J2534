@@ -26,11 +26,17 @@ bool Iso9141Channel::setup(int id, int protocol, int baud, int flags) {
     this->channel_id = id;
     this->obdSerial = &Serial1;
     this->baud = baud;
-    this->obdSerial->begin(baud);
     pinMode(SLP_PIN, OUTPUT);
     digitalWrite(SLP_PIN, HIGH);
     PT_DEVICE->set_kline_led(true);
-    pinMode(RX_PIN, INPUT_PULLUP);
+
+    pinMode(RX_PIN, INPUT);
+    digitalWrite(RX_PIN, HIGH);
+    #ifdef ARDUINO_SAM_DUE
+          g_APinDescription[RX_PIN].pPort -> PIO_PDR = g_APinDescription[RX_PIN].ulPin;
+          g_APinDescription[TX_PIN].pPort -> PIO_PDR = g_APinDescription[TX_PIN].ulPin;
+    #endif
+    this->obdSerial->begin(baud);
 
     // Default timings
     uint32_t p1_min = 0;
@@ -82,15 +88,25 @@ void Iso9141Channel::sendMsg(uint32_t tx_flags, char* data, int data_size, bool 
 }
 
 void Iso9141Channel::write_data(uint8_t* buf, uint8_t buf_len, bool do_checksum) {
+    uint8_t len = buf_len;
+    uint8_t* new_buf = nullptr;
     if (do_checksum) {
-        uint8_t* new_buf = (uint8_t*)malloc(buf_len+1);
+        new_buf = (uint8_t*)malloc(buf_len+1);
         memcpy(&new_buf[0], &buf[0], buf_len);
-        this->write_cs(new_buf, buf_len);
-        this->obdSerial->write(new_buf, buf_len+1);
-        delete[] new_buf;
+        new_buf[buf_len] = calc_cs(buf, buf_len);
+        len += 1;
     } else {
-        this->obdSerial->write(buf, buf_len);
+        new_buf = (uint8_t*)malloc(buf_len);
+        memcpy(&new_buf[0], &buf[0], buf_len);
     }
+
+    for (int i = 0; i < len; i++) {
+        this->obdSerial->write(new_buf[i]);
+        delay(this->p4_min);
+    }
+    this->obdSerial->setTimeout(this->p1_max*len);
+    this->obdSerial->readBytes(new_buf, len);
+    delete[] new_buf;
 }
 
 
@@ -112,31 +128,56 @@ void Iso9141Channel::wakeup(uint8_t type, uint8_t* request, uint8_t request_len)
         this->set_line(true); delay(this->twup);
 
         this->set_port(true);
-
+        /**
+         * Request according the passthru API looks like this
+         * request[0] - Format(functional addressing) (First header byte)
+         * request[1] - Initialization address used to activate all ECUs (Second header byte)
+         * request[2] - Scan tool physical source address (Third header byte)
+         * request[3] - Start communication request Service ID (First data byte)
+         */
         this->write_data(request, request_len, true); // Todo handle no checksum
-        this->obdSerial->setTimeout(this->p1_max);
         
-        uint8_t buf[10];
-        if (this->obdSerial->readBytes(buf, 1)) {
-            char sbuf[5];
-            sprintf(sbuf, "%d", buf[0]);
-            PCCOMM::log_message(sbuf);
-        } else {
-            PCCOMM::respond_err(MSG_INIT_LIN_CHANNEL, ERR_FAILED, "Err TIMEOUT");
+        /**
+         * Some responses I got in W215...nothing  makes sense
+         * NOTE: RX fields ignore the echoed back data from TX, that is handled in 'write_data'
+         * 
+         * TX: 81, 20, F3, 81
+         * RX: 73, FF, 81, 15, 90, 5D, 07, 20, 00, 00, 00, 02, F1, 40, 08, 00, 01, 00, 00, 00, 01, 00, 00, 00, 01, 01, 00, 00, 
+         *     C0, 32, 07, 20, E8, 09, 07, 20, AD, 15, 08, 00, 04, 00, 00, 00, C9, 32, 07, 20, 01, 00, 00, 00, F7, 08
+         * 
+         * TX: 81, 20, F3, 81
+         * RX: FF, F3, FF, FF, 81, 15, FF, FF, 00, 00, 00, 02, F1, 40, 08, 00, 01, 00, 00, 00, 01, 00, 00, 00, 01, 01, 00, 00, 
+         *     C0, 32, 07, 20, E8, 09, 07, 20, AD, 15, 08, 00, 04, 00, 00, 00, C9, 32, 07, 20, 01, 00, 00, 00, F7, 08, 08, 00, 
+         *     11, 00, 00, 00, C0, 32, 07, 20, 00, 00
+         * 
+         * TX: 81, 20, F3, 81
+         * RX: 15, FF, FF, 00, 90, 5D, 07, 20, 00, 00, 00, 02, F1, 40, 08, 00, 01, 00, 00, 00, 01, 00, 00, 00
+         * 
+         * Returning "RX" back to Vediamo results in it crashing 
+         */
+
+        this->obdSerial->setTimeout(this->p1_max + this->p3_min);
+        uint8_t resp[30];
+        if(!this->obdSerial->readBytes(resp, 1)) {
+            PCCOMM::respond_err(MSG_INIT_LIN_CHANNEL, ERR_TIMEOUT, "ECU TIMEOUT");
         }
-
-        
-        PCCOMM::respond_err(MSG_INIT_LIN_CHANNEL, ERR_FAILED, "WIP TODO");
-
+        uint8_t len = resp[0] & 0b111111;
+        uint8_t remainder = len + 2;
+        this->obdSerial->setTimeout(this->p1_max * (remainder+1) + this->p3_min);
+        if (this->obdSerial->readBytes(&resp[1], remainder)) {
+            PCCOMM::respond_ok(MSG_INIT_LIN_CHANNEL, resp, remainder+1);
+        } else {
+            PCCOMM::respond_err(MSG_INIT_LIN_CHANNEL, ERR_TIMEOUT, "ECU Timeout");
+        }
     }
 }
 
-void Iso9141Channel::write_cs(uint8_t* buffer, uint8_t len) {
+uint8_t Iso9141Channel::calc_cs(uint8_t* buffer, uint8_t len) {
     uint8_t res = 0;
     for (uint8_t i = 0; i < len; i++) {
         res += buffer[i];
     }
-    buffer[len] = res;
+    return res;
 }
 
 void Iso9141Channel::ioctl_set(uint32_t id, uint32_t value) {

@@ -373,7 +373,7 @@ impl MacchinaM2 {
     }
 
     /// Writes a message to the M2 unit, and expects a designated response back from the unit
-    pub fn write_and_read(&self, msg: &mut CommMsg, _timeout_ms: u128) -> PTResult<CommMsg> {
+    pub fn write_and_read(&self, msg: &mut CommMsg, timeout_ms: u128) -> PTResult<CommMsg> {
         let query_id = get_id(); // Set a unique ID, M2 is now forced to respond
         msg.msg_id = query_id;
 
@@ -386,7 +386,7 @@ impl MacchinaM2 {
         let start_time = std::time::Instant::now(); // This is just for logging and serves no other purpose
         
         // Wait for our response message to appear within the Rx queue
-        if let Ok(msg) = self.rx_recv_queue[query_id as usize -1].recv_timeout(M2_CMD_TIMEOUT) {
+        if let Ok(msg) = self.rx_recv_queue[query_id as usize -1].recv_timeout(std::time::Duration::from_millis(timeout_ms as u64)) {
             // For debugging, just log how long the CMD took to do a round trip (Req -> M2 -> Resp)
             log_debug(format!("Command took {}us to execute", start_time.elapsed().as_micros()));
             return Ok(msg); // Return our message
