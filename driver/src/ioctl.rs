@@ -1,5 +1,5 @@
 use j2534_rust::{IoctlParam, PASSTHRU_MSG, Parsable, PassthruError, SBYTE_ARRAY, SConfigList};
-use crate::{channels, comm::*, logger::{log_debug, log_error_str, log_warn, log_warn_str}, passthru_drv::set_error_string};
+use crate::{channels, comm::*, logger::{log_debug, log_error_str, log_warn, log_warn_str}};
 use crate::logger::{log_error};
 use byteorder::{LittleEndian, ByteOrder, WriteBytesExt};
 
@@ -169,10 +169,8 @@ pub fn clear_periodic_msgs(channel_id: u32) -> PassthruError {
     PassthruError::STATUS_NOERROR
 }
 
-#[allow(unused_variables)] // TODO
 pub fn clear_msg_filters(channel_id: u32) -> PassthruError {
-    log_warn_str("Clear message filters unimplemented");
-    PassthruError::STATUS_NOERROR
+    channels::ChannelComm::clear_all_filters(channel_id)
 }
 
 #[allow(unused_variables)] // TODO

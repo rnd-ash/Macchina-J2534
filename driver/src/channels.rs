@@ -191,6 +191,16 @@ impl ChannelComm {
         }
     }
 
+    pub fn clear_all_filters(channel_id: u32) -> PassthruError {
+        match ChannelID::from_u32(channel_id) {
+            Ok(c) => match c.get_channel().write().unwrap().as_mut() {
+                Some(c) => c.remove_all_filters(),
+                None => PassthruError::ERR_INVALID_CHANNEL_ID
+            },
+            Err(e) => e
+        }
+    }
+
     pub fn clear_rx_buffer(channel_id: u32) -> PassthruError {
         match ChannelID::from_u32(channel_id) {
             Ok(c) => match c.get_channel().write().unwrap().as_mut() {
@@ -365,6 +375,18 @@ impl Channel {
                 }
             }
         })
+    }
+
+    pub fn remove_all_filters(&mut self) -> PassthruError {
+        let populated_list = self.filters.clone();
+        for (idx, filter) in populated_list.iter().enumerate() {
+            if *filter != 0 { // Filter is populated
+                if let Err(e) = self.remove_filter(idx) {
+                    return e
+                }
+            }
+        }
+        PassthruError::STATUS_NOERROR
     }
 
     pub fn destroy(&self) -> Result<()> {

@@ -5,7 +5,7 @@ mod comm;
 mod channels;
 mod ioctl;
 mod passthru_drv;
-use logger::{log_debug, log_error_str};
+use logger::log_error_str;
 use passthru_drv::*;
 
 #[cfg(test)]

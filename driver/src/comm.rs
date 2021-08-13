@@ -7,15 +7,13 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread::spawn;
 use std::sync::RwLock;
 use lazy_static::lazy_static;
-use crate::{channels, logger::{self, log_debug_str, log_error_str, log_m2_msg}};
+use crate::{channels, logger::{self, log_error_str, log_m2_msg}};
 use j2534_rust::{PassthruError, Parsable};
 use crate::passthru_drv::set_error_string;
 use byteorder::{ByteOrder, WriteBytesExt, LittleEndian};
 
 #[cfg(windows)]
 use winreg::{RegKey, RegValue, enums::HKEY_LOCAL_MACHINE};
-
-const M2_CMD_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2); // Seconds
 
 lazy_static! {
     pub static ref M2: RwLock<Option<MacchinaM2>> = RwLock::new(None);

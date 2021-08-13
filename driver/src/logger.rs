@@ -1,7 +1,6 @@
 use std::{path::PathBuf, sync::RwLock};
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 use lazy_static::*;
 use std::sync::mpsc::{channel, Sender, Receiver};
