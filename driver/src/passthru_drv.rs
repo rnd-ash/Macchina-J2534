@@ -417,31 +417,48 @@ pub fn read_msgs(channel_id: u32, msg_ptr: *mut PASSTHRU_MSG, num_msg_ptr: *mut 
     if msg_ptr.is_null() || num_msg_ptr.is_null() {
         return PassthruError::ERR_NULL_PARAMETER
     }
-    let max_msgs = *unsafe { num_msg_ptr.as_ref() }.unwrap() as usize;
+    let max_msgs = *unsafe { num_msg_ptr.as_ref() }.unwrap() as isize;
     // Set num_msg_ptr to 0, we will increment it as reading to keep track how many messages have been read
     unsafe { *num_msg_ptr = 0 };
-    let start_time = Instant::now();
-    for i in 0..max_msgs as isize {
-        if timeout_ms != 0 && start_time.elapsed().as_millis() > timeout_ms as u128 { // Timeout!
-            return PassthruError::ERR_TIMEOUT
-        }
-        match channels::ChannelComm::read_channel_data(channel_id) {
-            Ok(opt) => {
-                match opt {
-                    Some(msg) => {
-                        //log_debug(format!("Channel {} sending data back to application! {}", channel_id, msg));
-                        unsafe { *msg_ptr.offset(i) = msg; }
+
+    let mut read_msgs = 0isize;
+    if timeout_ms == 0 { // Non-blocking read
+        loop {
+            match channels::ChannelComm::read_channel_data(channel_id) {
+                Ok(result) => {
+                    if let Some(msg) = result {
+                        unsafe { *msg_ptr.offset(read_msgs) = msg; }
                         unsafe { *num_msg_ptr += 1 };
-                    }
-                    None => {
-                        if timeout_ms == 0 {
-                            return PassthruError::ERR_BUFFER_EMPTY
+                        read_msgs += 1;
+                        if read_msgs == max_msgs {
+                            return PassthruError::STATUS_NOERROR; // Reading completed!
                         }
+                    } else {
+                        // No more messages to read, but haven't hit limit
+                        return PassthruError::ERR_BUFFER_EMPTY
+                    }
+                },
+                Err(e) => return e // Unknown error reading!
+            }
+        }
+    } else { // Blocking read
+        let start_time = Instant::now();
+        while start_time.elapsed().as_millis() <= timeout_ms as u128 {
+            match channels::ChannelComm::read_channel_data(channel_id) {
+                Ok(opt) => {
+                    if let Some(msg) = opt { // Read a message
+                        unsafe { *msg_ptr.offset(read_msgs) = msg; }
+                        unsafe { *num_msg_ptr += 1 };
+                        read_msgs += 1;
                     }
                 }
+                Err(e) => return e // Internal error reading messages!
             }
-            Err(e) => return e
+            if read_msgs == max_msgs as isize {
+                return PassthruError::STATUS_NOERROR; // Read completed OK!
+            }
+            std::thread::sleep(std::time::Duration::from_micros(500)); // Wait for a bit before trying to read again
         }
+        return PassthruError::ERR_TIMEOUT; // Timeout reading
     }
-    PassthruError::STATUS_NOERROR
 }
