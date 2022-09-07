@@ -1,4 +1,6 @@
-use j2534_rust::{IoctlParam, PASSTHRU_MSG, Parsable, PassthruError, SBYTE_ARRAY, SConfigList};
+use std::convert::TryFrom;
+
+use j2534_rust::{IoctlParam, PASSTHRU_MSG, PassthruError, SBYTE_ARRAY, SConfigList};
 use crate::{channels, comm::*, logger::{log_debug, log_error_str, log_warn, log_warn_str}};
 use crate::logger::{log_error};
 use byteorder::{LittleEndian, ByteOrder, WriteBytesExt};
@@ -48,7 +50,7 @@ pub fn set_config(channel_id: u32, cfg_ptr: &SConfigList) -> PassthruError {
             Some(param) => {
                 if param.parameter >= 0x20 {
                     log_warn(format!("setconfig param name is reserved / tool specific?. Param: {:08X}, value: {:08X}", param.parameter, param.value));
-                } else if let Some(pname) = IoctlParam::from_raw(param.parameter) {
+                } else if let Ok(pname) = IoctlParam::try_from(param.parameter) {
                     if let Err(e) = channels::ChannelComm::ioctl_set_cfg(channel_id, pname, param.value) {
                         return e
                     }
@@ -68,7 +70,7 @@ pub fn get_config(channel_id: u32, cfg_ptr: &SConfigList) -> PassthruError {
             Some(mut param) => {
                 if param.parameter >= 0x20 {
                     log_warn(format!("get config param name is reserved / tool specific?. Param: {:08X}, value: {:08X}", param.parameter, param.value));
-                } else if let Some(pname) = IoctlParam::from_raw(param.parameter) {
+                } else if let Ok(pname) = IoctlParam::try_from(param.parameter) {
                     if let Ok(pvalue) = channels::ChannelComm::ioctl_get_cfg(channel_id, pname) {
                         param.value = pvalue;
                     } else {

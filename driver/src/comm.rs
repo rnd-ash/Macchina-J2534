@@ -1,14 +1,14 @@
 use channels::ChannelComm;
 use logger::{log_debug, log_error, log_warn};
 use serialport::*;
-use std::{io::{Error, ErrorKind, Read, Write}, sync::{Mutex}};
+use std::{io::{Error, ErrorKind, Read, Write}, sync::{Mutex}, convert::TryFrom};
 use std::sync::{Arc, atomic::AtomicBool, atomic::Ordering};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread::spawn;
 use std::sync::RwLock;
 use lazy_static::lazy_static;
 use crate::{channels, logger::{self, log_error_str, log_m2_msg}};
-use j2534_rust::{PassthruError, Parsable};
+use j2534_rust::{PassthruError};
 use crate::passthru_drv::set_error_string;
 use byteorder::{ByteOrder, WriteBytesExt, LittleEndian};
 
@@ -337,9 +337,9 @@ impl MacchinaM2 {
             // M2 responded with a message, process it
             Ok(mut resp) => {
                 // Process the status of the message, this should be a PassthruError
-                let status = match PassthruError::from_raw(resp.args[0] as u32) {
-                    Some(x) => x, // Error processed successfully!
-                    None => {
+                let status = match PassthruError::try_from(resp.args[0] as u32) {
+                    Ok(x) => x, // Error processed successfully!
+                    Err(_) => {
                         // M2 responded with an error code not found in J2534 Spec??
                         return M2Resp::Err{ status: PassthruError::ERR_FAILED, string: format!("Unrecognized status {}", resp.args[0]) }
                     }

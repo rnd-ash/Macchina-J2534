@@ -170,8 +170,8 @@ pub fn passthru_connect(device_id: u32, protocol_id: u32, flags: u32, baud_rate:
     }
 
     // Obtain the protocol type
-    match Protocol::from_raw(protocol_id) {
-        Some(protocol) => { // Valid protocol
+    match Protocol::try_from(protocol_id) {
+        Ok(protocol) => { // Valid protocol
             // Try to create the logical communication channel
             match ChannelComm::create_channel(protocol, baud_rate, flags) {
                 Ok(channel_id) => { // Channel ID creation was OK! - Save it to the pointer
@@ -182,7 +182,7 @@ pub fn passthru_connect(device_id: u32, protocol_id: u32, flags: u32, baud_rate:
                 Err(x) => x
             }
         },
-        None => { // Protocol ID was invalid (Not found in J2534 spec), throw an error
+        Err(_) => { // Protocol ID was invalid (Not found in J2534 spec), throw an error
             logger::log_error(format!("{} is not recognised as a valid protocol ID!", protocol_id));
             PassthruError::ERR_INVALID_PROTOCOL_ID
         }
@@ -213,9 +213,9 @@ pub fn passthru_ioctl(
     output_ptr: *mut libc::c_void,
 ) -> PassthruError {
     // Try to parse the IOCTL ID
-    let ioctl_opt = match IoctlID::from_raw(ioctl_id) {
-        Some(p) => p, // Successful parse
-        None => { // invalid IOCTL ID
+    let ioctl_opt = match IoctlID::try_from(ioctl_id) {
+        Ok(p) => p, // Successful parse
+        Err(_) => { // invalid IOCTL ID
             log_error(format!("IOCTL Param {:08X} is invalid", ioctl_id));
             return PassthruError::ERR_INVALID_IOCTL_ID
         }
